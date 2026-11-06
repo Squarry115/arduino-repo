@@ -9,7 +9,7 @@ const SUB_HB = "hb_" + DEVICE_NAME
 
 const SUB_STATUS_COUNTER = "status_" + DEVICE_NAME + "_counter"
 const SUB_CMD_RESET_COUNTER = "cmd_" + DEVICE_NAME + "_reset_counter"
-const SUB_STATUS_CLIMATE = "status_" + DEVICE_NAME + "_climate"
+const SUB_STATUS_TEMPERATURE = "status_" + DEVICE_NAME + "_temperature"
 const SUB_CMD_LED_POWER = "cmd_" + DEVICE_NAME + "_led_power"
 const SUB_STATUS_LED_POWER = "status_" + DEVICE_NAME + "_led_power"
 const SUB_SET_LED_COLOR = "set_" + DEVICE_NAME + "_led_color"
@@ -21,10 +21,10 @@ const HB_BLINK_S := 0.5
 const COUNTER_PAYLOAD_SIZE := 4
 const COUNTER_VALUE_OFFSET := 0
 
-const CLIMATE_PAYLOAD_SIZE := 3
+const CLIMATE_PAYLOAD_SIZE := 4
 const TEMPERATURE_OFFSET := 0
 const HUMIDITY_OFFSET := 2
-const CENTI_DEGREES_DIVISOR := 100.0
+const CLIMATE_DIVIDER := 100
 
 const LED_POWER_PAYLOAD_SIZE := 1
 const LED_POWER_OFFSET := 0
@@ -75,7 +75,7 @@ func get_subscriptions() -> PackedStringArray:
 
 	subscriptions.append(SUB_HB)
 	subscriptions.append(SUB_STATUS_COUNTER)
-	subscriptions.append(SUB_STATUS_CLIMATE)
+	subscriptions.append(SUB_STATUS_TEMPERATURE)
 	subscriptions.append(SUB_STATUS_LED_POWER)
 	subscriptions.append(SUB_STATUS_LED_COLOR)
 
@@ -131,7 +131,7 @@ func on_message(
 
 	if subject_name == SUB_STATUS_COUNTER:
 		_on_counter_status(payload)
-	elif subject_name == SUB_STATUS_CLIMATE:
+	elif subject_name == SUB_STATUS_TEMPERATURE:
 		_on_climate_status(payload)
 	elif subject_name == SUB_STATUS_LED_POWER:
 		_on_led_power_status(payload)
@@ -162,15 +162,12 @@ func _on_climate_status(payload: PackedByteArray) -> void:
 	if payload.size() != CLIMATE_PAYLOAD_SIZE:
 		return
 
-	var temperature_centi: int = payload.decode_s16(TEMPERATURE_OFFSET)
-	var humidity: int = payload.decode_u8(HUMIDITY_OFFSET)
+	var temperature_centi = float(payload.decode_s16(TEMPERATURE_OFFSET)) / CLIMATE_DIVIDER
+	var humidity: float = float(payload.decode_u16(HUMIDITY_OFFSET)) / CLIMATE_DIVIDER
+	
 
-	var temperature: float = (
-		float(temperature_centi) / CENTI_DEGREES_DIVISOR
-	)
-
-	%TemperatureLabel.text = "Température : %.2f °C" % temperature
-	%HumidityLabel.text = "Humidité : %d %%" % humidity
+	%TemperatureLabel.text = "Température : %.2f °C" % temperature_centi
+	%HumidityLabel.text = "Humidité : %.2f %%" % humidity
 
 
 # ---- LED RGB ----
@@ -247,6 +244,14 @@ func _process(delta: float) -> void:
 
 	if _connected and _seconds_since_hb >= HB_TIMEOUT_S:
 		_connected = false
+	
+	%LedColorLabel.text = "RGB : %d, %d, %d" % [
+		$RedSlider.value,
+		$GreenSlider.value,
+		$BlueSlider.value
+	]
+	%LedColorPreview.color = Color8($RedSlider.value, $GreenSlider.value, $BlueSlider.value)
+	
 
 
 ## Actualise le délai du heartbeat reçu du capteur.
@@ -317,3 +322,6 @@ func _on_sensor_disconnected() -> void:
 	%RedSlider.editable = false
 	%GreenSlider.editable = false
 	%BlueSlider.editable = false
+
+
+	

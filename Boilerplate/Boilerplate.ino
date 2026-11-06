@@ -2,11 +2,17 @@
 #include <Arduino.h>
 #include <MPS.h>
 #include <DHT.h>
+#include <DHT_U.h>
 #include <math.h>
 #include <stdint.h>
 
 #include "config.h"
 
+#define DHTPIN 0
+ 
+// Definit le type de capteur utilise
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 // ---- CONSTANTES ----
 
 static constexpr uint8_t kDhtPin = 0;
@@ -25,8 +31,8 @@ constexpr mps::Subject kSubStatusCounter =
 constexpr mps::Subject kSubCmdResetCounter =
     mps::makeSubject("cmd_" DEVICE_NAME "_reset_counter");
 
-constexpr mps::Subject kSubStatusClimate =
-    mps::makeSubject("status_" DEVICE_NAME "_climate");
+constexpr mps::Subject kSubStatusTemperature = 
+    mps::makeSubject("status_" DEVICE_NAME "_temperature");
 
 constexpr mps::Subject kSubCmdLedPower =
     mps::makeSubject("cmd_" DEVICE_NAME "_led_power");
@@ -51,13 +57,11 @@ static_assert(sizeof(CounterPayload) == 4,
               "CounterPayload = 4 octets");
 
 /// Température et humidité mesurées par le DHT11.
-struct __attribute__((packed)) ClimatePayload {
-  int16_t temperatureCentiDegrees;
-  uint8_t humidityPercent;
+struct __attribute__((packed)) DhtPayload {
+  int16_t temperatureCentiDegrees; // Température, en centièmes de degré Celsius
+  uint16_t humidityPercent; //< Humidité relative, en %
 };
-
-static_assert(sizeof(ClimatePayload) == 3,
-              "ClimatePayload = 3 octets");
+static_assert(sizeof(DhtPayload) == 4, "DhtPayload = 4 octets");
 
 /// État réel de l'alimentation de la LED.
 struct __attribute__((packed)) LedPowerPayload {
@@ -82,10 +86,9 @@ static_assert(sizeof(LedColorPayload) == 3,
 static uint32_t gLastHeartbeatMs = 0;
 
 
-static DHT gDht(kDhtPin, DHT11);
 
 static CounterPayload gCounter = {0};
-static ClimatePayload gClimate = {};
+static DhtPayload gSensorValues = {0, 0};
 static LedPowerPayload gLedPower = {0};
 static LedColorPayload gLedColor = {0, 0, 0};
 
@@ -106,8 +109,9 @@ static void publishClimate() {
   if (!gHasClimateReading) {
     return;
   }
-
-  MPS.publishValue(kSubStatusClimate, gClimate);
+  Serial.println(gSensorValues.humidityPercent);
+  Serial.println(gSensorValues.temperatureCentiDegrees);
+  MPS.publishValue(kSubStatusTemperature, gSensorValues);
 }
 
 /// Publie l'état réel de l'alimentation de la LED.
@@ -141,22 +145,17 @@ static void applyLedOutput() {
 
 /// Lit le DHT11 et publie une mesure valide.
 static void readClimate() {
-  const float temperature = gDht.readTemperature();
-  const float humidity = gDht.readHumidity();
-
-  if (isnan(temperature) || isnan(humidity)) {
+  gSensorValues.temperatureCentiDegrees = (int16_t)(dht.readTemperature() * 100);
+  gSensorValues.humidityPercent = (uint16_t)(dht.readHumidity() * 100);
+  Serial.println(gSensorValues.humidityPercent);
+  Serial.println(gSensorValues.temperatureCentiDegrees);
+  if (isnan(gSensorValues.temperatureCentiDegrees) || isnan(gSensorValues.humidityPercent)) {
     return;
   }
 
-  if (humidity < 0.0f || humidity > 100.0f) {
+  if ( gSensorValues.humidityPercent > 10000) {
     return;
   }
-
-  gClimate.temperatureCentiDegrees =
-      static_cast<int16_t>(roundf(temperature * 100.0f));
-
-  gClimate.humidityPercent =
-      static_cast<uint8_t>(roundf(humidity));
 
   gHasClimateReading = true;
 
@@ -230,10 +229,12 @@ static void onSessionOpened() {
 
 /// Initialise les capteurs, la LED et les abonnements MPS.
 void setup() {
+  Serial.begin(115200); // Démarrage de la communication série à 115200 bauds (sortie des Serial.print.. par exemple)
+  MPS.setLogOutput(&Serial); // Définition de la sortie des messages de log de la lib MPS
 
   gLastHeartbeatMs = millis();
 
-  gDht.begin();
+  dht.begin();
 
   applyLedOutput();
 
@@ -276,6 +277,7 @@ void loop() {
 
   if (now - gLastClimateReadMs >= kClimatePeriodMs) {
     gLastClimateReadMs = now;
+    Serial.println("reading temps");
     readClimate();
   }
 }

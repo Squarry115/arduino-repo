@@ -180,10 +180,11 @@ anchor_left = 0.16700001
 anchor_top = 0.42900002
 anchor_right = 0.35700002
 anchor_bottom = 0.476
-offset_left = 167.888
-offset_top = 71.85599
-offset_right = 192.04799
-offset_bottom = 80.063995
+offset_left = 151.888
+offset_top = 95.85599
+offset_right = 176.04799
+offset_bottom = 104.063995
+text = "."
 
 [node name="LedColorPreview" type="ColorRect" parent="." unique_id=2063994898]
 unique_name_in_owner = true
@@ -193,28 +194,30 @@ anchor_left = 0.786
 anchor_top = 0.381
 anchor_right = 0.952
 anchor_bottom = 0.42900002
-offset_left = -32.09601
-offset_top = -64.01601
-offset_right = 0.12799072
-offset_bottom = -16.144012
+offset_left = -56.09601
+offset_top = -40.016006
+offset_right = -15.872009
+offset_bottom = 7.8559875
 
 [node name="RedSlider" type="HSlider" parent="." unique_id=2112122392]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = -1
 anchor_right = 0.012
-offset_left = 240.0
-offset_top = 144.0
-offset_right = 315.968
-offset_bottom = 160.0
+offset_left = 208.0
+offset_top = 168.0
+offset_right = 299.968
+offset_bottom = 184.0
+max_value = 255.0
 
 [node name="GreenSlider" type="HSlider" parent="." unique_id=1345749363]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 240.0
-offset_top = 168.0
-offset_right = 320.0
-offset_bottom = 184.0
+offset_left = 208.0
+offset_top = 192.0
+offset_right = 304.0
+offset_bottom = 208.0
+max_value = 255.0
 
 [node name="BlueSlider" type="HSlider" parent="." unique_id=501081371]
 unique_name_in_owner = true
@@ -222,16 +225,17 @@ layout_mode = 1
 anchors_preset = -1
 anchor_right = 0.19000001
 anchor_bottom = 0.048
-offset_left = 240.0
-offset_top = 192.0
-offset_right = 256.16
-offset_bottom = 191.872
+offset_left = 208.0
+offset_top = 216.0
+offset_right = 240.16
+offset_bottom = 215.872
+max_value = 255.0
 
 [node name="ApplyColorButton" type="Button" parent="." unique_id=1841736100]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 216.0
-offset_top = 248.0
-offset_right = 310.0
-offset_bottom = 280.0
+offset_left = 208.0
+offset_top = 272.0
+offset_right = 304.0
+offset_bottom = 304.0
 text = "apply color"
