@@ -1,8 +1,8 @@
-### Depot HMI et Arduino
+# Depot HMI et Arduino
 
 ## Contrats
 
-# Godot vers ESP32
+### Godot vers ESP32
 
 SUB_CMD_RESET_COUNTER = "cmd_" + DEVICE_NAME + "_reset_counter"
   description : requête de réinitialisation du compteur
@@ -19,7 +19,7 @@ SUB_SET_LED_COLOR = "set_" + DEVICE_NAME + "_led_color"
   payload : 3 int pour rouge, vert et bleu respectivement
   nom dans arduino : kSubSetLedColor
 
-# ESP32 vers Godot
+### ESP32 vers Godot
 
 kSubStatusCounter = "status_" DEVICE_NAME "_counter"
   description : renvoie le statut du compteur
