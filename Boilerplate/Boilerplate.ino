@@ -1,136 +1,282 @@
-#include <DHT.h>
-#include <DHT_U.h>
 
+#include <Arduino.h>
 #include <MPS.h>
+#include <DHT.h>
+#include <math.h>
+#include <stdint.h>
+
 #include "config.h"
 
-#define DHTPIN 0
- 
-// Definit le type de capteur utilise
-#define DHTTYPE DHT11
+// ---- CONSTANTES ----
 
-DHT dht(DHTPIN, DHTTYPE);
+static constexpr uint8_t kDhtPin = 0;
+static constexpr uint8_t kLedPin = 2;
 
-// ---- Structures de payloads ----
+static constexpr uint32_t kCounterPeriodMs = 2000;
+static constexpr uint32_t kClimatePeriodMs = 2000;
+static constexpr uint32_t kHeartbeatPeriodMs = 1000;
+
+constexpr mps::Subject kSubHb =
+    mps::makeSubject("hb_" DEVICE_NAME);
+
+constexpr mps::Subject kSubStatusCounter =
+    mps::makeSubject("status_" DEVICE_NAME "_counter");
+
+constexpr mps::Subject kSubCmdResetCounter =
+    mps::makeSubject("cmd_" DEVICE_NAME "_reset_counter");
+
+constexpr mps::Subject kSubStatusClimate =
+    mps::makeSubject("status_" DEVICE_NAME "_climate");
+
+constexpr mps::Subject kSubCmdLedPower =
+    mps::makeSubject("cmd_" DEVICE_NAME "_led_power");
+
+constexpr mps::Subject kSubStatusLedPower =
+    mps::makeSubject("status_" DEVICE_NAME "_led_power");
+
+constexpr mps::Subject kSubSetLedColor =
+    mps::makeSubject("set_" DEVICE_NAME "_led_color");
+
+constexpr mps::Subject kSubStatusLedColor =
+    mps::makeSubject("status_" DEVICE_NAME "_led_color");
+
+// ---- STRUCTURES PAYLOAD ----
+
+/// Valeur actuelle du compteur.
 struct __attribute__((packed)) CounterPayload {
-uint32_t value;
+  uint32_t value;
 };
-static_assert(sizeof(CounterPayload) == 4, "CounterPayload = 4 octets");
 
-struct __attribute__((packed)) DhtPayload {
-int16_t temperatureCentiDegrees; // Température, en centièmes de degré Celsius
-uint16_t humidityPercent; //< Humidité relative, en %
+static_assert(sizeof(CounterPayload) == 4,
+              "CounterPayload = 4 octets");
+
+/// Température et humidité mesurées par le DHT11.
+struct __attribute__((packed)) ClimatePayload {
+  int16_t temperatureCentiDegrees;
+  uint8_t humidityPercent;
 };
-static_assert(sizeof(DhtPayload) == 4, "DhtPayload = 4 octets");
 
-// ---- Variables globales ----
-static CounterPayload counter = {0};
-static DhtPayload sensorvalues = {0, 0};
-// ---- Subjects ----
-constexpr mps::Subject kSubHb = mps::makeSubject("hb_" DEVICE_NAME); // déjà présent
-constexpr mps::Subject kSubStatusCounter = mps::makeSubject("status_" DEVICE_NAME "_counter");
-constexpr mps::Subject kSubCmdResetCounter = mps::makeSubject("cmd_" DEVICE_NAME "_reset_counter");
-constexpr mps::Subject kSubStatusTemperature = mps::makeSubject("status_" DEVICE_NAME "_temperature");
-// ---- Callbacks ----
-// Appelé lors de l'ouverture de la session (callback)
-static void onSessionOpened() {
-  Serial.println("Session opened!");
-  MPS.publishValue(kSubStatusCounter, counter);
+static_assert(sizeof(ClimatePayload) == 3,
+              "ClimatePayload = 3 octets");
+
+/// État réel de l'alimentation de la LED.
+struct __attribute__((packed)) LedPowerPayload {
+  uint8_t isOn;
+};
+
+static_assert(sizeof(LedPowerPayload) == 1,
+              "LedPowerPayload = 1 octet");
+
+/// Couleur RGB appliquée à la LED.
+struct __attribute__((packed)) LedColorPayload {
+  uint8_t red;
+  uint8_t green;
+  uint8_t blue;
+};
+
+static_assert(sizeof(LedColorPayload) == 3,
+              "LedColorPayload = 3 octets");
+
+// ---- VARIABLES ----
+
+static uint32_t gLastHeartbeatMs = 0;
+
+
+static DHT gDht(kDhtPin, DHT11);
+
+static CounterPayload gCounter = {0};
+static ClimatePayload gClimate = {};
+static LedPowerPayload gLedPower = {0};
+static LedColorPayload gLedColor = {0, 0, 0};
+
+static bool gHasClimateReading = false;
+
+static uint32_t gLastCounterUpdateMs = 0;
+static uint32_t gLastClimateReadMs = 0;
+
+// ---- PUBLICATION DES ETATS ----
+
+/// Publie la valeur actuelle du compteur.
+static void publishCounter() {
+  MPS.publishValue(kSubStatusCounter, gCounter);
 }
 
-// Appelé en cas d'échec d'envoi (callback)
-static void onSendFailed(uint16_t sequenceNumber, uint32_t subjectId, mps::SendFailureReason, mps::AcknowledgementStatus) {
-  Serial.printf("/!\\ envoi %u (subject 0x%08lX) perdu\n", sequenceNumber, (unsigned long)subjectId);
-}
-
-static void onCmdResetCounter(const mps::FrameView& message, void*) {
-if (message.payloadLength != 0) return; // ce format n'a pas de payload
-counter.value = 0;
-MPS.publishValue(kSubStatusCounter, counter); // l'IHM voit le résultat réel
-}
-
-// ... ajoutez vos callbacks ici, ex : 
-// static void onCmdSomeOrder(const mps::FrameView& message, void*) {
-//   SomePayload payload;
-//   if(!mps::readPayloadAs(message, &payload)) return;
-//   Serial.printf("Donnée : %02X\n", payload.someVariableA);
-// }
-
-// ---- Fonctions appelées par setup/loop ----
-// envoi de heartbeats réguliers sans bloquer (comparaison au temps écoulé sans delay())
-void publishHeartbeat(){
-  static uint32_t lastHeartbeatTimeMs = 0;
-  static const uint16_t kHbPeriod = 1000;
-  if(millis() - lastHeartbeatTimeMs >= kHbPeriod) {
-    lastHeartbeatTimeMs = millis();
-    
-    // L'envoi de heartbeats depuis loop() assure au récepteur (IHM) que le code "métier" n'est pas planté
-    MPS.publishHeartbeat(kSubHb);
-  }
-}
-
-
-
-// ---- Fonctions Arduino ----
-// Exécutée une fois au démarrage
-void setup() {
-  Serial.begin(115200); // Démarrage de la communication série à 115200 bauds (sortie des Serial.print.. par exemple)
-  MPS.setLogOutput(&Serial); // Définition de la sortie des messages de log de la lib MPS
-
-  // enregistrement des callbacks
-  MPS.setRegisteredCallback(onSessionOpened);
-  MPS.setSendFailedCallback(onSendFailed);
-  // ... ajoutez vos callbacks à l'aide de MPS.on(const mps::Subject& subject, mps::MessageHandler handler, void* userContext = nullptr)
-  // par exemple :
-  // MPS.on(kSubCmdSomeOrder, onCmdSomeOrder);
-
-  // constante d'adresse vide pour vérifier que l'adresse a été définie dans config.h
-  static const uint8_t kUnsetMacAddress[6] = {0, 0, 0, 0, 0, 0};
-  if(memcmp(kGatewayMacAddress, kUnsetMacAddress, 6) == 0) {
-    Serial.println("MPS: renseignez kGatewayMacAddress dans config.h (adresse affichee par l'IHM)");
+/// Publie la dernière mesure valide du DHT11.
+static void publishClimate() {
+  if (!gHasClimateReading) {
     return;
   }
 
-  // démarrage du client MPS
-  if(!MPS.begin(kGatewayMacAddress, DEVICE_NAME, kWifiChannel)) Serial.println("MPS: demarrage impossible");
-  MPS.on(kSubCmdResetCounter, onCmdResetCounter);
+  MPS.publishValue(kSubStatusClimate, gClimate);
+}
 
-  dht.begin();
+/// Publie l'état réel de l'alimentation de la LED.
+static void publishLedPower() {
+  MPS.publishValue(kSubStatusLedPower, gLedPower);
+}
+
+/// Publie la couleur actuellement sélectionnée.
+static void publishLedColor() {
+  MPS.publishValue(kSubStatusLedColor, gLedColor);
+}
+
+// ---- LED RGB ----
+
+/// Applique l'état et la couleur mémorisés à la LED intégrée.
+static void applyLedOutput() {
+  if (gLedPower.isOn == 0) {
+    rgbLedWrite(kLedPin, 0, 0, 0);
+    return;
+  }
+
+  rgbLedWrite(
+      kLedPin,
+      gLedColor.red,
+      gLedColor.green,
+      gLedColor.blue
+  );
+}
+
+// ---- LECTURE DU CAPTEUR ----
+
+/// Lit le DHT11 et publie une mesure valide.
+static void readClimate() {
+  const float temperature = gDht.readTemperature();
+  const float humidity = gDht.readHumidity();
+
+  if (isnan(temperature) || isnan(humidity)) {
+    return;
+  }
+
+  if (humidity < 0.0f || humidity > 100.0f) {
+    return;
+  }
+
+  gClimate.temperatureCentiDegrees =
+      static_cast<int16_t>(roundf(temperature * 100.0f));
+
+  gClimate.humidityPercent =
+      static_cast<uint8_t>(roundf(humidity));
+
+  gHasClimateReading = true;
+
+  publishClimate();
+}
+
+// ---- HANDLERS ----
+
+/// Réinitialise le compteur après réception d'une commande valide.
+static void onCmdResetCounter(
+    const mps::FrameView& message,
+    void*
+) {
+  if (message.payloadLength != 0) {
+    return;
+  }
+
+  gCounter.value = 0;
+  publishCounter();
+}
+
+/// Applique l'état d'alimentation demandé à la LED.
+static void onCmdLedPower(
+    const mps::FrameView& message,
+    void*
+) {
+  LedPowerPayload payload = {};
+
+  if (!mps::readPayloadAs(message, &payload)) {
+    return;
+  }
+
+  if (payload.isOn > 1) {
+    return;
+  }
+
+  gLedPower = payload;
+
+  applyLedOutput();
+  publishLedPower();
+}
+
+/// Applique la couleur demandée par l'interface.
+static void onSetLedColor(
+    const mps::FrameView& message,
+    void*
+) {
+  LedColorPayload payload = {};
+
+  if (!mps::readPayloadAs(message, &payload)) {
+    return;
+  }
+
+  gLedColor = payload;
+
+  applyLedOutput();
+  publishLedColor();
+}
+
+// ---- SESSION MPS ----
+
+/// Republie tous les états connus à chaque ouverture de session.
+static void onSessionOpened() {
+  publishCounter();
+  publishClimate();
+  publishLedPower();
+  publishLedColor();
+}
+
+// ---- INITIALISATION ----
+
+/// Initialise les capteurs, la LED et les abonnements MPS.
+void setup() {
+
+  gLastHeartbeatMs = millis();
+
+  gDht.begin();
+
+  applyLedOutput();
+
+  MPS.setRegisteredCallback(onSessionOpened);
+
+  MPS.on(kSubCmdResetCounter, onCmdResetCounter);
+  MPS.on(kSubCmdLedPower, onCmdLedPower);
+  MPS.on(kSubSetLedColor, onSetLedColor);
+
+  MPS.begin(
+      kGatewayMacAddress,
+      DEVICE_NAME,
+      kWifiChannel
+  );
+
+  gLastCounterUpdateMs = millis();
+  gLastClimateReadMs = millis();
 }
 
 
+/// Maintient la communication et actualise périodiquement les mesures.
 
-// Exécutée en boucle (= while(true))
+/// Maintient la communication et actualise périodiquement les mesures.
 void loop() {
-  // appel de la boucle MPS (/!\ du code bloquant dans votre boucle loop() pourrait occasionner des problèmes de connexion)
   MPS.loop();
 
-  // Appel non bloquant de l'envoi d'HB (polling)
-  publishHeartbeat();
-  // ... ajoutez vos envois de données et autres comportements **non bloquants**
-  // par exemple :
-  // static uint32_t lastDataStatusTimeMs = 0;
-  // if(millis() - lastDataStatusTimeMs >= 2000){
-  //   lastDataStatusTimeMs = millis();
-  //   SomePayload payload = {0, 0};
-  //   payload.someVariableA = digitalRead(3);
-  //   payload.someVariableB = analogRead(5);
-  //   MPS.publishValue(kSubStatusSomeData, payload);
-  // }
-  
-  static uint32_t lastCounterTimeMs = 0;
-  if (millis() - lastCounterTimeMs >= 2000) {
-    lastCounterTimeMs = millis();
-    counter.value++;
-    MPS.publishValue(kSubStatusCounter, counter);
-    Serial.println("Temperature = " + String(dht.readTemperature())+" °C");
-    Serial.println("Humidite = " + String(dht.readHumidity())+" %");
-    sensorvalues.temperatureCentiDegrees = (int16_t)(dht.readTemperature() * 100);
-    sensorvalues.humidityPercent = (uint16_t)(dht.readHumidity() * 100);
-    MPS.publishValue(kSubStatusTemperature, sensorvalues);
-    Serial.println(sensorvalues.temperatureCentiDegrees);
-    Serial.println(sensorvalues.humidityPercent);
+  const uint32_t now = millis();
+
+  if (now - gLastHeartbeatMs >= kHeartbeatPeriodMs) {
+    gLastHeartbeatMs = now;
+    MPS.publishHeartbeat(kSubHb);
+  }
+
+  if (now - gLastCounterUpdateMs >= kCounterPeriodMs) {
+    gLastCounterUpdateMs = now;
+
+    gCounter.value += 1;
+    publishCounter();
+  }
+
+  if (now - gLastClimateReadMs >= kClimatePeriodMs) {
+    gLastClimateReadMs = now;
+    readClimate();
   }
 }
-
 

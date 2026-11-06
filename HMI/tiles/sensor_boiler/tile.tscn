@@ -12,10 +12,10 @@
 content_margin_bottom = 1.0
 
 [node name="TileSensorDemo" type="Panel" unique_id=304170558]
-custom_minimum_size = Vector2(500, 500)
-custom_maximum_size = Vector2(500, 500)
-offset_right = 336.0
-offset_bottom = 336.0
+custom_minimum_size = Vector2(336, 336)
+custom_maximum_size = Vector2(336, 336)
+offset_right = 360.0
+offset_bottom = 240.0
 mouse_filter = 2
 theme_override_styles/panel = ExtResource("1_lf8ud")
 script = ExtResource("2_y03qy")
@@ -80,38 +80,158 @@ theme_override_fonts/font = ExtResource("7_f7tlc")
 theme_override_font_sizes/font_size = 20
 text = "node_id: ∅"
 
-[node name="CounterLabel" type="Label" parent="." unique_id=1377593783]
+[node name="CounterLabel" type="Label" parent="." unique_id=1307177720]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.333
+anchor_top = 0.84400004
+anchor_right = 0.45200002
+anchor_bottom = 0.88100004
+offset_left = -95.888
+offset_top = -51.584015
+offset_right = -74.87201
+offset_bottom = -41.01602
+text = "counter"
+
+[node name="ResetButton" type="Button" parent="." unique_id=584074766]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.071
+anchor_top = 0.40500003
+anchor_right = 0.45200002
+anchor_bottom = 0.45200002
+offset_left = -7.856001
+offset_top = 135.91998
+offset_right = -87.87201
+offset_bottom = 160.12799
+text = "reset"
+
+[node name="TemperatureLabel" type="Label" parent="." unique_id=1394558638]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.40500003
+anchor_top = 0.381
+anchor_right = 0.52400005
+anchor_bottom = 0.40500003
+offset_left = -120.08002
+offset_top = -8.016006
+offset_right = -58.06401
+offset_bottom = 6.919983
+text = "Temperature"
+
+[node name="HumidityLabel" type="Label" parent="." unique_id=375683207]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.45200002
+anchor_top = 0.32000002
+anchor_right = 0.54800004
+anchor_bottom = 0.333
+offset_left = -135.87201
+offset_top = -11.520004
+offset_right = -55.128006
+offset_bottom = 7.1119995
+text = "Humidity"
+
+[node name="LedPowerLabel" type="Label" parent="." unique_id=1181569050]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.35700002
+anchor_top = 0.558
+anchor_right = 0.40500003
+anchor_bottom = 0.57100004
+offset_left = -103.95201
+offset_top = -11.488007
+offset_right = -43.080017
+offset_bottom = 7.143982
+text = "LedPower"
+
+[node name="LedOnButton" type="Button" parent="." unique_id=945062904]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 32.0
-offset_top = 152.0
-offset_right = 137.0
+offset_left = 104.0
+offset_top = 144.0
+offset_right = 160.0
 offset_bottom = 175.0
-text = "CounterLabel"
+text = "led on"
 
-[node name="ResetButton" type="Button" parent="." unique_id=1240976300]
+[node name="LedOffButton" type="Button" parent="." unique_id=876832883]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -0.048
+anchor_top = -0.024
+offset_left = 32.128
+offset_top = 152.064
+offset_right = 98.0
+offset_bottom = 175.0
+text = "led off
+"
+
+[node name="LedColorLabel" type="Label" parent="." unique_id=1064267639]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.16700001
+anchor_top = 0.42900002
+anchor_right = 0.35700002
+anchor_bottom = 0.476
+offset_left = 167.888
+offset_top = 71.85599
+offset_right = 192.04799
+offset_bottom = 80.063995
+
+[node name="LedColorPreview" type="ColorRect" parent="." unique_id=2063994898]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.786
+anchor_top = 0.381
+anchor_right = 0.952
+anchor_bottom = 0.42900002
+offset_left = -32.09601
+offset_top = -64.01601
+offset_right = 0.12799072
+offset_bottom = -16.144012
+
+[node name="RedSlider" type="HSlider" parent="." unique_id=2112122392]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.012
+offset_left = 240.0
+offset_top = 144.0
+offset_right = 315.968
+offset_bottom = 160.0
+
+[node name="GreenSlider" type="HSlider" parent="." unique_id=1345749363]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 32.0
-offset_top = 120.0
-offset_right = 137.0
-offset_bottom = 151.0
-text = "ResetButton"
+offset_left = 240.0
+offset_top = 168.0
+offset_right = 320.0
+offset_bottom = 184.0
 
-[node name="temperature" type="Label" parent="." unique_id=556748447]
+[node name="BlueSlider" type="HSlider" parent="." unique_id=501081371]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.19000001
+anchor_bottom = 0.048
+offset_left = 240.0
+offset_top = 192.0
+offset_right = 256.16
+offset_bottom = 191.872
+
+[node name="ApplyColorButton" type="Button" parent="." unique_id=1841736100]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 32.0
-offset_top = 176.0
-offset_right = 131.0
-offset_bottom = 199.0
-text = "température"
-
-[node name="hummid" type="Label" parent="." unique_id=1553313297]
-unique_name_in_owner = true
-layout_mode = 0
-offset_left = 32.0
-offset_top = 200.0
-offset_right = 118.0
-offset_bottom = 223.0
-text = "hummidité"
+offset_left = 216.0
+offset_top = 248.0
+offset_right = 310.0
+offset_bottom = 280.0
+text = "apply color"
