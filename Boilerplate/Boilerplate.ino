@@ -229,8 +229,8 @@ static void onSessionOpened() {
 
 /// Initialise les capteurs, la LED et les abonnements MPS.
 void setup() {
-  Serial.begin(115200); // Démarrage de la communication série à 115200 bauds (sortie des Serial.print.. par exemple)
-  MPS.setLogOutput(&Serial); // Définition de la sortie des messages de log de la lib MPS
+  Serial.begin(115200); 
+  MPS.setLogOutput(&Serial); 
 
   gLastHeartbeatMs = millis();
 
@@ -255,7 +255,6 @@ void setup() {
 }
 
 
-/// Maintient la communication et actualise périodiquement les mesures.
 
 /// Maintient la communication et actualise périodiquement les mesures.
 void loop() {
