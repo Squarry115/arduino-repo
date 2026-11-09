@@ -31,8 +31,8 @@ constexpr mps::Subject kSubStatusCounter =
 constexpr mps::Subject kSubCmdResetCounter =
     mps::makeSubject("cmd_" DEVICE_NAME "_reset_counter");
 
-constexpr mps::Subject kSubStatusTemperature = 
-    mps::makeSubject("status_" DEVICE_NAME "_temperature");
+constexpr mps::Subject kSubStatusClimat = 
+    mps::makeSubject("status_" DEVICE_NAME "_climat");
 
 constexpr mps::Subject kSubCmdLedPower =
     mps::makeSubject("cmd_" DEVICE_NAME "_led_power");
@@ -109,9 +109,7 @@ static void publishClimate() {
   if (!gHasClimateReading) {
     return;
   }
-  Serial.println(gSensorValues.humidityPercent);
-  Serial.println(gSensorValues.temperatureCentiDegrees);
-  MPS.publishValue(kSubStatusTemperature, gSensorValues);
+  MPS.publishValue(kSubStatusClimat, gSensorValues);
 }
 
 /// Publie l'état réel de l'alimentation de la LED.
@@ -147,8 +145,6 @@ static void applyLedOutput() {
 static void readClimate() {
   gSensorValues.temperatureCentiDegrees = (int16_t)(dht.readTemperature() * 100);
   gSensorValues.humidityPercent = (uint16_t)(dht.readHumidity() * 100);
-  Serial.println(gSensorValues.humidityPercent);
-  Serial.println(gSensorValues.temperatureCentiDegrees);
   if (isnan(gSensorValues.temperatureCentiDegrees) || isnan(gSensorValues.humidityPercent)) {
     return;
   }
@@ -276,7 +272,6 @@ void loop() {
 
   if (now - gLastClimateReadMs >= kClimatePeriodMs) {
     gLastClimateReadMs = now;
-    Serial.println("reading temps");
     readClimate();
   }
 }

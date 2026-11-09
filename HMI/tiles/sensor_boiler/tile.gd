@@ -9,7 +9,7 @@ const SUB_HB = "hb_" + DEVICE_NAME
 
 const SUB_STATUS_COUNTER = "status_" + DEVICE_NAME + "_counter"
 const SUB_CMD_RESET_COUNTER = "cmd_" + DEVICE_NAME + "_reset_counter"
-const SUB_STATUS_TEMPERATURE = "status_" + DEVICE_NAME + "_temperature"
+const SUB_STATUS_CLIMAT = "status_" + DEVICE_NAME + "_climat"
 const SUB_CMD_LED_POWER = "cmd_" + DEVICE_NAME + "_led_power"
 const SUB_STATUS_LED_POWER = "status_" + DEVICE_NAME + "_led_power"
 const SUB_SET_LED_COLOR = "set_" + DEVICE_NAME + "_led_color"
@@ -75,7 +75,7 @@ func get_subscriptions() -> PackedStringArray:
 
 	subscriptions.append(SUB_HB)
 	subscriptions.append(SUB_STATUS_COUNTER)
-	subscriptions.append(SUB_STATUS_TEMPERATURE)
+	subscriptions.append(SUB_STATUS_CLIMAT)
 	subscriptions.append(SUB_STATUS_LED_POWER)
 	subscriptions.append(SUB_STATUS_LED_COLOR)
 
@@ -131,7 +131,7 @@ func on_message(
 
 	if subject_name == SUB_STATUS_COUNTER:
 		_on_counter_status(payload)
-	elif subject_name == SUB_STATUS_TEMPERATURE:
+	elif subject_name == SUB_STATUS_CLIMAT:
 		_on_climate_status(payload)
 	elif subject_name == SUB_STATUS_LED_POWER:
 		_on_led_power_status(payload)
